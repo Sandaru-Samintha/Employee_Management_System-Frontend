@@ -1,4 +1,4 @@
-Employee Management Frontend
+## Employee Management frontend
 
 A React + Vite frontend for managing employee records with role-based admin permissions.
 
@@ -78,11 +78,6 @@ npm run preview
 - Admins see enabled Add/Edit/Delete controls.
 - Non-admin users see a read-only view with disabled actions.
 
-## Notes
-
-- Make sure the backend returns the `role` value as `admin` for admin users.
-- If login fails, the app shows a toast error message.
-- Logout clears stored user data and returns to the login page.
 
 ## Project structure
 
