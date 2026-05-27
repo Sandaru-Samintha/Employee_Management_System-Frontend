@@ -1,25 +1,23 @@
-import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
-import { 
-  HiOutlineUserGroup, 
-  HiOutlineUserAdd, 
-  HiOutlineUserRemove,
-  HiOutlinePencilAlt,
-  HiOutlineTrash,
-  HiOutlineX,
-  HiOutlineCheck,
-  HiOutlineMail,
-  HiOutlinePhone,
+import { FaUserCheck, FaUserTimes } from 'react-icons/fa';
+import {
   HiOutlineBriefcase,
+  HiOutlineCheck,
   HiOutlineIdentification,
   HiOutlineLogout,
-  HiOutlineUserCircle
+  HiOutlineMail,
+  HiOutlinePencilAlt,
+  HiOutlinePhone,
+  HiOutlineTrash,
+  HiOutlineUserAdd,
+  HiOutlineUserCircle,
+  HiOutlineUserGroup,
+  HiOutlineX
 } from 'react-icons/hi';
-import { FaUserCheck, FaUserTimes } from 'react-icons/fa';
-import { MdPeopleAlt } from 'react-icons/md';
 import { WiStars } from 'react-icons/wi';
+import { useNavigate } from 'react-router-dom';
 
 function EmployeePage() {
   const navigate = useNavigate();
@@ -38,6 +36,8 @@ function EmployeePage() {
   });
 
   const token = localStorage.getItem('token');
+  const userRole = localStorage.getItem('userRole') || '';
+  const isAdmin = userRole.toLowerCase() === 'admin';
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
   useEffect(() => {
@@ -45,7 +45,6 @@ function EmployeePage() {
     // Get user info from localStorage (stored during login)
     const firstName = localStorage.getItem('userFirstName');
     const lastName = localStorage.getItem('userLastName');
-    const userRole = localStorage.getItem('userRole');
     const userEmail = localStorage.getItem('userEmail');
     
     if (firstName || lastName || userRole) {
@@ -78,12 +77,20 @@ function EmployeePage() {
   }
 
   function openAdd() {
+    if (!isAdmin) {
+      toast.error('Only admins can add employees');
+      return;
+    }
     setEditingId(null);
     setForm({ employeeId: '', name: '', email: '', role: '', status: 'Active', phoneNumber: '' });
     setShowForm(true);
   }
 
   function openEdit(emp) {
+    if (!isAdmin) {
+      toast.error('Only admins can edit employees');
+      return;
+    }
     setEditingId(emp.employeeId);
     setForm({
       employeeId: emp.employeeId || '',
@@ -98,6 +105,10 @@ function EmployeePage() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (!isAdmin) {
+      toast.error('Only admins can save employee changes');
+      return;
+    }
     try {
       if (editingId) {
         await axios.put(
@@ -124,6 +135,10 @@ function EmployeePage() {
   }
 
   async function handleDelete(id) {
+    if (!isAdmin) {
+      toast.error('Only admins can delete employees');
+      return;
+    }
     if (!confirm('Delete this employee?')) return;
     try {
       await axios.delete(import.meta.env.VITE_API_URL + '/employees/deleteemployee/' + id, {
@@ -201,10 +216,11 @@ function EmployeePage() {
                 <p className="text-white/60 text-sm mt-1">Manage your team and employees efficiently</p>
               </div>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <button
                 onClick={openAdd}
-                className="px-5 py-2.5 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white font-semibold shadow-lg shadow-purple-500/25 hover:shadow-xl hover:shadow-purple-500/30 hover:scale-105 transition-all duration-300 flex items-center gap-2"
+                disabled={!isAdmin}
+                className={`px-5 py-2.5 rounded-full text-white font-semibold shadow-lg transition-all duration-300 flex items-center gap-2 ${isAdmin ? 'bg-gradient-to-r from-violet-500 to-fuchsia-500 shadow-purple-500/25 hover:shadow-xl hover:shadow-purple-500/30 hover:scale-105' : 'bg-white/10 text-gray-300 cursor-not-allowed opacity-70'}`}
               >
                 <HiOutlineUserAdd className="text-xl" />
                 Add Employee
@@ -217,6 +233,13 @@ function EmployeePage() {
                 Logout
               </button>
             </div>
+          </div>
+          <div className="mt-4 text-sm text-white/70">
+            {isAdmin ? (
+              <span className="inline-flex items-center gap-2">Admin access enabled — you can add, edit, and delete employees.</span>
+            ) : (
+              <span className="inline-flex items-center gap-2">Read-only access — only admins can add, edit, or delete employees.</span>
+            )}
           </div>
         </div>
 
@@ -317,22 +340,26 @@ function EmployeePage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => openEdit(emp)}
-                              className="px-3 py-1.5 rounded-full bg-indigo-500/80 hover:bg-indigo-500 text-white text-xs font-semibold transition-all hover:scale-105 shadow-md flex items-center gap-1"
-                            >
-                              <HiOutlinePencilAlt className="text-sm" />
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleDelete(emp.employeeId)}
-                              className="px-3 py-1.5 rounded-full bg-rose-500/80 hover:bg-rose-500 text-white text-xs font-semibold transition-all hover:scale-105 shadow-md flex items-center gap-1"
-                            >
-                              <HiOutlineTrash className="text-sm" />
-                              Delete
-                            </button>
-                          </div>
+                          {isAdmin ? (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => openEdit(emp)}
+                                className="px-3 py-1.5 rounded-full bg-indigo-500/80 hover:bg-indigo-500 text-white text-xs font-semibold transition-all hover:scale-105 shadow-md flex items-center gap-1"
+                              >
+                                <HiOutlinePencilAlt className="text-sm" />
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDelete(emp.employeeId)}
+                                className="px-3 py-1.5 rounded-full bg-rose-500/80 hover:bg-rose-500 text-white text-xs font-semibold transition-all hover:scale-105 shadow-md flex items-center gap-1"
+                              >
+                                <HiOutlineTrash className="text-sm" />
+                                Delete
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-gray-300 italic">Admin only</span>
+                          )}
                         </td>
                       </tr>
                     ))
