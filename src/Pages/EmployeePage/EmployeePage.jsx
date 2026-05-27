@@ -10,6 +10,7 @@ import {
   HiOutlineMail,
   HiOutlinePencilAlt,
   HiOutlinePhone,
+  HiOutlineSearch,
   HiOutlineTrash,
   HiOutlineUserAdd,
   HiOutlineUserCircle,
@@ -26,6 +27,10 @@ function EmployeePage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [userInfo, setUserInfo] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 8;
   const [form, setForm] = useState({
     employeeId: '',
     name: '',
@@ -193,6 +198,35 @@ function EmployeePage() {
     return userInfo?.role || 'Employee';
   };
 
+  const filteredEmployees = employees.filter((emp) => {
+    const matchesName = emp.name?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === 'All' || emp.status === statusFilter;
+    return matchesName && matchesStatus;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filteredEmployees.length / rowsPerPage));
+  const currentEmployees = filteredEmployees.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+
+  const handleSearchChange = (value) => {
+    setSearchQuery(value);
+    setCurrentPage(1);
+  };
+
+  const handleStatusChange = (value) => {
+    setStatusFilter(value);
+    setCurrentPage(1);
+  };
+
+  const goToPage = (page) => {
+    setCurrentPage(page);
+  };
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0B0385] to-[#E064F9] p-4 md:p-6 font-sans">
       <div className="max-w-7xl mx-auto">
@@ -287,6 +321,40 @@ function EmployeePage() {
           </div>
         ) : (
           <div className="bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden shadow-2xl">
+            <div className="p-5 border-b border-white/10">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex-1 min-w-0 flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <label className="sr-only" htmlFor="employee-search">Search employees</label>
+                  <div className="relative flex-1">
+                    <HiOutlineSearch className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-indigo-300" />
+                    <input
+                      id="employee-search"
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => handleSearchChange(e.target.value)}
+                      placeholder="Search by name..."
+                      className="w-full rounded-2xl bg-slate-900/90 border border-white/10 pl-12 pr-4 py-3 text-sm text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/50"
+                    />
+                  </div>
+                  <div className="min-w-[160px]">
+                    <label className="sr-only" htmlFor="status-filter">Filter by status</label>
+                    <select
+                      id="status-filter"
+                      value={statusFilter}
+                      onChange={(e) => handleStatusChange(e.target.value)}
+                      className="w-full rounded-2xl bg-slate-900/90 border border-white/10 px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-fuchsia-500/50"
+                    >
+                      <option>All</option>
+                      <option>Active</option>
+                      <option>Inactive</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="text-sm text-white/70">
+                  Showing {currentEmployees.length} of {filteredEmployees.length} matching employees
+                </div>
+              </div>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[800px]">
                 <thead className="bg-gradient-to-r from-slate-800/80 to-slate-900/80">
@@ -301,12 +369,14 @@ function EmployeePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10">
-                  {employees.length === 0 ? (
+                  {filteredEmployees.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-12 text-center text-gray-300 italic">No employees found</td>
+                      <td colSpan={7} className="px-6 py-12 text-center text-gray-300 italic">
+                        {searchQuery || statusFilter !== 'All' ? 'No matching employees found' : 'No employees found'}
+                      </td>
                     </tr>
                   ) : (
-                    employees.map((emp) => (
+                    currentEmployees.map((emp) => (
                       <tr key={emp.employeeId || emp._id} className="hover:bg-white/5 transition-colors duration-150">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-fuchsia-200">
                           <div className="flex items-center gap-2">
@@ -367,6 +437,41 @@ function EmployeePage() {
                 </tbody>
               </table>
             </div>
+            <div className="px-5 py-4 border-t border-white/10 bg-slate-950/20 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="text-sm text-white/70">
+                Page {currentPage} of {totalPages}
+              </div>
+              {totalPages > 1 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => goToPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                    className="rounded-full px-3 py-2 bg-slate-900/90 border border-white/10 text-sm text-white transition hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+                    <button
+                      key={page}
+                      type="button"
+                      onClick={() => goToPage(page)}
+                      className={`rounded-full px-3 py-2 text-sm transition ${page === currentPage ? 'bg-fuchsia-500 text-white' : 'bg-slate-900/90 text-slate-200 hover:bg-slate-800'}`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => goToPage(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                    className="rounded-full px-3 py-2 bg-slate-900/90 border border-white/10 text-sm text-white transition hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -390,7 +495,7 @@ function EmployeePage() {
                 </h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1 flex items-center gap-1">
+                    <label className="flex text-sm font-medium text-gray-300 mb-1 items-center gap-1">
                       <HiOutlineIdentification className="text-indigo-300" />
                       Employee ID
                     </label>
@@ -413,7 +518,7 @@ function EmployeePage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1 flex items-center gap-1">
+                    <label className="flex text-sm font-medium text-gray-300 mb-1 items-center gap-1">
                       <HiOutlineMail className="text-indigo-300" />
                       Email Address
                     </label>
@@ -427,7 +532,7 @@ function EmployeePage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1 flex items-center gap-1">
+                    <label className="flex text-sm font-medium text-gray-300 mb-1 items-center gap-1">
                       <HiOutlineBriefcase className="text-indigo-300" />
                       Role
                     </label>
@@ -450,7 +555,7 @@ function EmployeePage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1 flex items-center gap-1">
+                    <label className="flex text-sm font-medium text-gray-300 mb-1 items-center gap-1">
                       <HiOutlinePhone className="text-indigo-300" />
                       Phone Number
                     </label>

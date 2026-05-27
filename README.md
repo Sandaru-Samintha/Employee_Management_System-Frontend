@@ -11,7 +11,17 @@ A React + Vite frontend for managing employee records with role-based admin perm
   - edit existing employees
   - delete employees
 - Regular users can view employee details but cannot modify them.
-- Uses ` + 'localStorage' + ` to store authentication data and user role.
+- Supports employee search, status filtering, and pagination in the employee list.
+- Uses `localStorage` to store authentication data and user role.
+
+## Features
+
+- Search employees by name
+- Filter employees by status (`All`, `Active`, `Inactive`)
+- Paginate employee list with previous/next controls and page numbers
+- Admin-only add/edit/delete actions
+- Read-only view for non-admin users
+- Employee status badges for quick active/inactive identification
 
 ## Built with
 
@@ -30,10 +40,10 @@ A React + Vite frontend for managing employee records with role-based admin perm
 
 ## Environment setup
 
-Create a .env file at the project root with the backend API URL, for example:
+Create a `.env` file at the project root with the backend API URL, for example:
 
-
-dcat VITE_API_URL=http://localhost:3000/api
+```bash
+VITE_API_URL=http://localhost:3000/api
 ```
 
 The frontend expects the backend routes to include:
@@ -74,10 +84,9 @@ npm run preview
 
 - `src/Pages/LoginPage/LoginPage.jsx` handles login and stores `token`, `userFirstName`, `userLastName`, `userRole`, and `userEmail` in `localStorage`.
 - `src/Pages/EmployeePage/EmployeePage.jsx` fetches employees using `axios` with the stored Bearer token.
-- The page checks `localStorage.userRole` to determine if the current user is an admin.
+- The employee page now supports search, status filter, and pagination.
 - Admins see enabled Add/Edit/Delete controls.
-- Non-admin users see a read-only view with disabled actions.
-
+- Non-admin users see a read-only view with filtered and paginated employee data.
 
 ## Project structure
 
@@ -86,4 +95,4 @@ npm run preview
 - `src/Pages/LoginPage/LoginPage.jsx` - login screen
 - `src/Pages/EmployeePage/EmployeePage.jsx` - employee management page
 - `src/Components/PopupMessageComponent/PopupMessage.jsx` - reusable toast wrapper
-`; fs.writeFileSync('README.md', content, 'utf8');"
+"
