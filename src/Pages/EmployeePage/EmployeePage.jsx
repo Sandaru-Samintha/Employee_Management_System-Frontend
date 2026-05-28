@@ -39,6 +39,7 @@ function EmployeePage() {
     status: 'Active',
     phoneNumber: '',
   });
+  const [phoneError, setPhoneError] = useState('');
 
   const token = localStorage.getItem('token');
   const userRole = localStorage.getItem('userRole') || '';
@@ -88,6 +89,7 @@ function EmployeePage() {
     }
     setEditingId(null);
     setForm({ employeeId: '', name: '', email: '', role: '', status: 'Active', phoneNumber: '' });
+    setPhoneError('');
     setShowForm(true);
   }
 
@@ -96,7 +98,7 @@ function EmployeePage() {
       toast.error('Only admins can edit employees');
       return;
     }
-    setEditingId(emp.employeeId);
+    setEditingId(emp.employeeId || emp._id || null);
     setForm({
       employeeId: emp.employeeId || '',
       name: emp.name || '',
@@ -105,6 +107,7 @@ function EmployeePage() {
       status: emp.status || 'Active',
       phoneNumber: emp.phoneNumber || '',
     });
+    setPhoneError('');
     setShowForm(true);
   }
 
@@ -114,18 +117,36 @@ function EmployeePage() {
       toast.error('Only admins can save employee changes');
       return;
     }
+    // Validate phone before submitting
+    if (form.phoneNumber && !validatePhone(form.phoneNumber)) {
+      toast.error('Please enter a valid phone number');
+      return;
+    }
+    // Check duplicate phone numbers (normalize digits); allow same number for the employee being edited
+    if (form.phoneNumber) {
+      const normalized = (form.phoneNumber || '').replace(/\D/g, '');
+      const duplicate = employees.some(emp => {
+        const empDigits = (emp.phoneNumber || '').replace(/\D/g, '');
+        const id = emp.employeeId || emp._id || '';
+        return empDigits === normalized && id !== (editingId || '');
+      });
+      if (duplicate) {
+        toast.error('Phone number already in use');
+        return;
+      }
+    }
     try {
       if (editingId) {
         await axios.put(
           import.meta.env.VITE_API_URL + '/employees/updateemployee/' + editingId,
-          form,
+          { ...form, phoneNumber: form.phoneNumber ? formatPhoneForSave(form.phoneNumber) : '' },
           { headers: authHeaders }
         );
         toast.success('Employee updated');
       } else {
         await axios.post(
           import.meta.env.VITE_API_URL + '/employees/saveemployee',
-          form,
+          { ...form, phoneNumber: form.phoneNumber ? formatPhoneForSave(form.phoneNumber) : '' },
           { headers: authHeaders }
         );
         toast.success('Employee added');
@@ -137,6 +158,45 @@ function EmployeePage() {
       const msg = err?.response?.data?.message || 'Operation failed';
       toast.error(msg);
     }
+  }
+
+  // Simple phone validation: allow digits, spaces, parentheses, dashes and optional leading +
+  function validatePhone(phone) {
+    if (!phone) return true; // optional field
+    // Reject letters outright
+    if (/[A-Za-z]/.test(phone)) return false;
+    const digits = phone.replace(/\D/g, '');
+    // Accept Sri Lanka formats:
+    // - local: 10 digits starting with '07' (e.g., 071xxxxxxx)
+    // - international: 11 digits starting with '94' (e.g., +9471xxxxxxx -> digits '9471...')
+    // - short local without leading 0: 9 digits starting with '7' (e.g., 771234567)
+    if (digits.length === 10 && digits.startsWith('07')) return true;
+    if (digits.length === 11 && digits.startsWith('94')) return true;
+    if (digits.length === 9 && digits.startsWith('7')) return true;
+    return false;
+  }
+
+  // Format phone for saving: convert to international +94 format
+  function formatPhoneForSave(phone) {
+    if (!phone) return '';
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length === 10 && digits.startsWith('07')) {
+      // local -> remove leading 0 and prefix +94
+      return '+94' + digits.slice(1);
+    }
+    if (digits.length === 11 && digits.startsWith('94')) {
+      return '+' + digits;
+    }
+    if (digits.length === 9 && digits.startsWith('7')) {
+      return '+94' + digits;
+    }
+    // Fallback: return digits prefixed with + if seems international
+    return '+' + digits;
+  }
+
+  // Helper: normalize phone to digits-only string
+  function normalizePhone(phone) {
+    return (phone || '').replace(/\D/g, '');
   }
 
   async function handleDelete(id) {
@@ -561,10 +621,30 @@ function EmployeePage() {
                     </label>
                     <input
                       value={form.phoneNumber}
-                      onChange={e => setForm({ ...form, phoneNumber: e.target.value })}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setForm({ ...form, phoneNumber: val });
+                        // validation
+                        if (val && !validatePhone(val)) {
+                          setPhoneError('Invalid phone number');
+                          return;
+                        }
+                        // duplicate check against current employees (allow same for editing)
+                        const normalized = normalizePhone(val);
+                        const duplicate = employees.some(emp => {
+                          const empDigits = normalizePhone(emp.phoneNumber);
+                          const id = emp.employeeId || emp._id || '';
+                          return normalized && empDigits === normalized && id !== (editingId || '');
+                        });
+                        if (duplicate) setPhoneError('Phone number already in use');
+                        else setPhoneError('');
+                      }}
                       className="w-full px-4 py-2 rounded-xl bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/50 focus:border-transparent transition-all"
                       placeholder="Enter phone number"
                     />
+                    {phoneError && (
+                      <p className="text-rose-400 text-sm mt-1">{phoneError}</p>
+                    )}
                   </div>
                   <div className="flex justify-end gap-3 pt-4">
                     <button
@@ -577,7 +657,8 @@ function EmployeePage() {
                     </button>
                     <button
                       type="submit"
-                      className="px-5 py-2 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white font-semibold shadow-lg shadow-purple-500/25 hover:shadow-xl hover:scale-105 transition-all flex items-center gap-1"
+                      disabled={!!phoneError}
+                      className={`px-5 py-2 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white font-semibold shadow-lg shadow-purple-500/25 hover:shadow-xl hover:scale-105 transition-all flex items-center gap-1 ${phoneError ? 'opacity-60 cursor-not-allowed' : ''}`}
                     >
                       {editingId ? (
                         <>
